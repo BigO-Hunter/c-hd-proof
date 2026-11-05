@@ -495,14 +495,20 @@ theorem natlog_mul_le (x y : ℕ) (hx : 1 ≤ x) (hy : 1 ≤ y) :
 
 /-! ## Side conditions on the window `m ≤ n · F n` (`F` = agent-10's integer threshold `⌊(log₂ n)^{3/4}⌋`) -/
 
-/-- On the window, `dd ≤ F n + 1`. -/
-theorem dd_le_F (n m : ℕ) (hn : 1 ≤ n) (hw : m ≤ n * Frontier.GateCCalc.F n) :
-    dd n m ≤ Frontier.GateCCalc.F n + 1 := by
+/-- On the window `m ≤ n · F n`, `dd ≤ F n + 1`, for an ARBITRARY threshold `F`: the window
+hypothesis alone gives it, so the density cap is not baked into the calculus. -/
+theorem dd_le_of_window (F : ℕ → ℕ) (n m : ℕ) (hn : 1 ≤ n) (hw : m ≤ n * F n) :
+    dd n m ≤ F n + 1 := by
   unfold dd
-  have : m / n ≤ Frontier.GateCCalc.F n := by
+  have : m / n ≤ F n := by
     rw [Nat.div_le_iff_le_mul_add_pred (by omega)]
     nlinarith
   omega
+
+/-- On the window, `dd ≤ F n + 1`. -/
+theorem dd_le_F (n m : ℕ) (hn : 1 ≤ n) (hw : m ≤ n * Frontier.GateCCalc.F n) :
+    dd n m ≤ Frontier.GateCCalc.F n + 1 :=
+  dd_le_of_window _ n m hn hw
 
 /-- `(F n)⁴ ≤ (log₂ n)³`. -/
 theorem F_pow_four_le (n : ℕ) : Frontier.GateCCalc.F n ^ 4 ≤ Nat.log 2 n ^ 3 := by
@@ -891,5 +897,121 @@ theorem term_mlogtF (n m : ℕ) (hn : 1 ≤ n) : (m : ℝ) * Nat.log 2 (tF n m +
   have hm0 : (0 : ℝ) ≤ m := Nat.cast_nonneg m
   calc (m : ℝ) * Nat.log 2 (tF n m + 1) ≤ (m : ℝ) * tF n m := mul_le_mul_of_nonneg_left hR hm0
     _ ≤ 26 * Tchd n m := term_mtF n m hn
+
+/-! ## The cap calculus (`F` = ⌊lg^{(2p-1)/(2p)}⌋ and its siblings)
+
+Everything above the arithmetic refers to a cap only through two facts, proved here for an arbitrary
+threshold `F`:
+
+* `dd_le_lgN_add_one` — on the window, the density is `≤ lgN + 1` (any `F` with `F ≤ lgN`);
+* `lgN_le_tF_pow12` — the cap strength, uniformly as `lgN ≤ 256 t¹²` (from `F^8 ≤ (log₂ n)⁷`).
+
+`⌊lg^{3/4}⌋` (`p = 2`) and `⌊lg^{7/8}⌋` (`p = 4`, `GateCCalc.F87`) both satisfy them. -/
+
+/-- **The cap condition is a density condition**: `f ^ 4 ≤ (log₂ n)³ ⇒ f ≤ lgN`. -/
+theorem pow_four_le_lgN {f n : ℕ} (h4 : f ^ 4 ≤ Nat.log 2 n ^ 3) : f ≤ lgN n := by
+  have hle : Nat.log 2 n ≤ lgN n := le_max_right _ _
+  have hl1 : 1 ≤ lgN n := one_le_lgN n
+  have h3 : f ^ 4 ≤ lgN n ^ 4 := by
+    calc f ^ 4 ≤ Nat.log 2 n ^ 3 := h4
+      _ ≤ lgN n ^ 3 := Nat.pow_le_pow_left hle 3
+      _ ≤ lgN n ^ 4 := Nat.pow_le_pow_right hl1 (by norm_num)
+  exact (Nat.pow_le_pow_iff_left (by norm_num)).mp h3
+
+/-- `F n ≤ lgN n`. -/
+theorem F_le_lgN (n : ℕ) : Frontier.GateCCalc.F n ≤ lgN n :=
+  pow_four_le_lgN (F_pow_four_le n)
+
+/-- **The density interface used above the arithmetic**: on the window, the density is at most
+`lgN + 1`.  Cap-free (it holds for every threshold with `F ≤ lgN`). -/
+theorem dd_le_lgN_add_one (n m : ℕ) (hn : 1 ≤ n) (hw : m ≤ n * Frontier.GateCCalc.F n) :
+    dd n m ≤ lgN n + 1 := by
+  have h1 := dd_le_F n m hn hw
+  have h2 := F_le_lgN n
+  omega
+
+/-- `(f+1)⁴ ≤ 16 lgN³` from `f⁴ ≤ lgN³` (the shape every `⌊lg^{θ}⌋` cap with `θ ≤ 3/4` provides). -/
+theorem succ_pow_four_le {f n : ℕ} (hf4 : f ^ 4 ≤ lgN n ^ 3) : (f + 1) ^ 4 ≤ 16 * lgN n ^ 3 := by
+  have hl1 : 1 ≤ lgN n := one_le_lgN n
+  rcases Nat.eq_zero_or_pos f with h0 | h0
+  · rw [h0]; have : 1 ≤ lgN n ^ 3 := Nat.one_le_pow _ _ hl1; omega
+  · have : f + 1 ≤ 2 * f := by omega
+    calc (f + 1) ^ 4 ≤ (2 * f) ^ 4 := Nat.pow_le_pow_left this 4
+      _ = 16 * f ^ 4 := by ring
+      _ ≤ 16 * lgN n ^ 3 := by omega
+
+/-- `(F n + 1)⁴ ≤ 16 lgN³` for the `3/4` cap. -/
+theorem F_succ_pow_four_le (n : ℕ) :
+    (Frontier.GateCCalc.F n + 1) ^ 4 ≤ 16 * lgN n ^ 3 :=
+  succ_pow_four_le (le_trans (F_pow_four_le n) (Nat.pow_le_pow_left (le_max_right _ _) 3))
+
+/-- `⌊lg^{3/4}⌋⁸ ≤ (log₂ n)⁷` (`F87`'s root power, for the `3/4` cap). -/
+theorem F_pow_eight_le (n : ℕ) : Frontier.GateCCalc.F n ^ 8 ≤ Nat.log 2 n ^ 7 := by
+  have h4 := F_pow_four_le n
+  calc Frontier.GateCCalc.F n ^ 8 = (Frontier.GateCCalc.F n ^ 4) ^ 2 := by ring
+    _ ≤ (Nat.log 2 n ^ 3) ^ 2 := Nat.pow_le_pow_left h4 2
+    _ = Nat.log 2 n ^ 6 := by ring
+    _ ≤ Nat.log 2 n ^ 7 := by
+        rcases Nat.eq_zero_or_pos (Nat.log 2 n) with h | h
+        · rw [h]; norm_num
+        · calc Nat.log 2 n ^ 6 = Nat.log 2 n ^ 6 * 1 := by ring
+            _ ≤ Nat.log 2 n ^ 6 * Nat.log 2 n := Nat.mul_le_mul_left _ (by omega)
+            _ = Nat.log 2 n ^ 7 := by ring
+
+/-- **The squaring chain of the cap calculus.**  From `lgN² ≤ A³ (f+1)²` and
+`(f+1)^{2p} ≤ C lgN^{2p-1}` follows `lgN ≤ C A^{3p}`. -/
+theorem mc_lgN_sq_chain (n : ℕ) {A f p C : ℕ} (hp : 1 ≤ p)
+    (h1 : lgN n ^ 2 ≤ A ^ 3 * (f + 1) ^ 2)
+    (hFp : (f + 1) ^ (2 * p) ≤ C * lgN n ^ (2 * p - 1)) :
+    lgN n ≤ C * A ^ (3 * p) := by
+  have h2 : (lgN n ^ 2) ^ p ≤ (A ^ 3 * (f + 1) ^ 2) ^ p := Nat.pow_le_pow_left h1 p
+  have hL : (lgN n ^ 2) ^ p = lgN n ^ (2 * p) := by rw [← pow_mul]
+  have hR : (A ^ 3 * (f + 1) ^ 2) ^ p = A ^ (3 * p) * (f + 1) ^ (2 * p) := by
+    rw [Nat.mul_pow, ← pow_mul, ← pow_mul]
+  rw [hL, hR] at h2
+  have h3 : lgN n * lgN n ^ (2 * p - 1) ≤ (C * A ^ (3 * p)) * lgN n ^ (2 * p - 1) := by
+    calc lgN n * lgN n ^ (2 * p - 1) = lgN n ^ (2 * p) := by
+          rw [mul_comm, ← pow_succ, show 2 * p - 1 + 1 = 2 * p by omega]
+      _ ≤ A ^ (3 * p) * (f + 1) ^ (2 * p) := h2
+      _ ≤ A ^ (3 * p) * (C * lgN n ^ (2 * p - 1)) := Nat.mul_le_mul_left _ hFp
+      _ = (C * A ^ (3 * p)) * lgN n ^ (2 * p - 1) := by ring
+  have hpos : 0 < lgN n ^ (2 * p - 1) := pow_pos (by have := one_le_lgN n; omega) _
+  exact Nat.le_of_mul_le_mul_right h3 hpos
+
+/-- **On the window `dd ≤ F n + 1`, `lgN n ≤ C t^{3p}`** for any cap `F` with
+`(F n + 1)^{2p} ≤ C lgN^{2p-1}`.  `p = 2, C = 16` is the `3/4` cap (`lgN ≤ 16 t⁶`);
+`p = 4, C = 256` is the `7/8` cap (`lgN ≤ 256 t¹²`). -/
+theorem mc_lgN_le_pow (F : ℕ → ℕ) (n m p C : ℕ) (hp : 1 ≤ p)
+    (hdd : dd n m ≤ F n + 1)
+    (hFp : (F n + 1) ^ (2 * p) ≤ C * lgN n ^ (2 * p - 1)) :
+    lgN n ≤ C * tF n m ^ (3 * p) := by
+  have h1 : lgN n ^ 2 ≤ tpar n m ^ 3 * (F n + 1) ^ 2 :=
+    le_trans (tpar_spec n m).2 (Nat.mul_le_mul le_rfl (Nat.pow_le_pow_left hdd 2))
+  have h4 := mc_lgN_sq_chain n hp h1 hFp
+  exact h4.trans (Nat.mul_le_mul_left _ (Nat.pow_le_pow_left (tpar_le_tF n m) (3 * p)))
+
+/-- **The cap strength, uniformly as `lgN ≤ 256 t¹²`** — the single arithmetic hypothesis the master
+cost theorem asks of a cap (the plan's constant `2^{1/(1-α)}` at `α = 7/8`).  `hcap8 : F n ^ 8 ≤ (log₂ n)⁷`
+is the cap's own root power: `⌊lg^{7/8}⌋` directly, `⌊lg^{3/4}⌋` via `F_pow_eight_le`. -/
+theorem lgN_le_tF_pow12 (F : ℕ → ℕ) (n m : ℕ) (hdd : dd n m ≤ F n + 1)
+    (hcap8 : F n ^ 8 ≤ Nat.log 2 n ^ 7) : lgN n ≤ 256 * tF n m ^ 12 := by
+  have hlog_le : Nat.log 2 n ≤ lgN n := le_max_right _ _
+  rcases Nat.lt_or_ge (lgN n) 16 with hsmall | hbig
+  · have h1 : lgN n ≤ 15 := by omega
+    have ht1 : 1 ≤ tF n m ^ 12 := Nat.one_le_pow _ _ (by have := sixteen_le_tF n m; omega)
+    have h2 : 256 ≤ 256 * tF n m ^ 12 := Nat.le_mul_of_pos_right _ ht1
+    omega
+  · have h8 : (F n + 1) ^ 8 ≤ 256 * lgN n ^ 7 := by
+      rcases Nat.eq_zero_or_pos (F n) with h0 | h0
+      · rw [h0]
+        calc (0 + 1) ^ 8 = 1 := by norm_num
+          _ ≤ lgN n ^ 7 := Nat.one_le_pow _ _ (by omega)
+          _ ≤ 256 * lgN n ^ 7 := Nat.le_mul_of_pos_left _ (by norm_num)
+      · calc (F n + 1) ^ 8 ≤ (2 * F n) ^ 8 := Nat.pow_le_pow_left (by omega) 8
+          _ = 256 * F n ^ 8 := by ring
+          _ ≤ 256 * Nat.log 2 n ^ 7 := Nat.mul_le_mul_left _ hcap8
+          _ ≤ 256 * lgN n ^ 7 := Nat.mul_le_mul_left _ (Nat.pow_le_pow_left hlog_le 7)
+    exact mc_lgN_le_pow F n m 4 256 (by norm_num) hdd (by simpa using h8)
+
 
 end Frontier.CostSkeleton

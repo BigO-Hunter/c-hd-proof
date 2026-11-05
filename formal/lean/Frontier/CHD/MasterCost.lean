@@ -250,79 +250,105 @@ theorem mc_F_le (n : ℕ) : Frontier.GateCCalc.F n ≤ lgN n := by
 
 /-- On the dispatch branch `lgN n ≤ 16 t⁶`. -/
 theorem mc_lgN_le (n m : ℕ) (hdd : dd n m ≤ Frontier.GateCCalc.F n + 1) : lgN n ≤ 16 * tF n m ^ 6 := by
-  set f := Frontier.GateCCalc.F n with hf
-  set A := tpar n m with hA
-  have hspec := (tpar_spec n m).2
-  have h1 : lgN n ^ 2 ≤ A ^ 3 * (f + 1) ^ 2 :=
-    le_trans hspec (Nat.mul_le_mul le_rfl (Nat.pow_le_pow_left hdd 2))
+  have := mc_lgN_le_pow Frontier.GateCCalc.F n m 2 16 (by norm_num) hdd
+    (by simpa using F_succ_pow_four_le n)
+  simpa using this
+
+/-- **`lgN ≤ 16 t⁶` implies the uniform cap strength `lgN ≤ 16 t¹²`.** -/
+theorem t6_le_t12 {n m : ℕ} (h : lgN n ≤ 16 * tF n m ^ 6) : lgN n ≤ 16 * tF n m ^ 12 := by
+  have ht1 : 1 ≤ tF n m := by have := sixteen_le_tF n m; omega
+  calc lgN n ≤ 16 * tF n m ^ 6 := h
+    _ ≤ 16 * tF n m ^ 12 := Nat.mul_le_mul_left _ (by
+        calc tF n m ^ 6 = tF n m ^ 6 * 1 := by ring
+          _ ≤ tF n m ^ 6 * tF n m ^ 6 := Nat.mul_le_mul_left _ (Nat.one_le_pow _ _ ht1)
+          _ = tF n m ^ 12 := by ring)
+
+/-- **The recursive-level insertion charge is `O(t)` for EVERY cap of the family** (checklist I7/I13):
+`211 log₂(8ρ + 8) + 441 ≤ 3826 t` for `ρ = chdRho t δ L0`, from the *logarithmic* density interface
+`δ ≤ 5 (lgN + 1)` and the cap strength `lgN n ≤ C t¹²` for any `C ≤ 256` — the plan's uniform form
+`lgN ≤ 2^{1/(1-α)} t^{3/(2(1-α))}` at `α = 7/8`.  The constant `3826` survives because
+`log₂(8ρ+8) < 17 t` and `211·17 + 441/t ≤ 3587 + 28 < 3826`. -/
+theorem mc_ins_le_core (n m δ C : ℕ) (hC : C ≤ 256)
+    (hδ : δ ≤ 5 * (lgN n + 1)) (hphys : lgN n ≤ C * tF n m ^ 12) :
+    211 * Nat.log 2 (8 * chdRho (tF n m) δ (LF n m) + 8) + 441 ≤ 3826 * tF n m := by
+  have ht : 16 ≤ tF n m := sixteen_le_tF n m
+  have hLF : LF n m ≤ lgN n + 1 := by unfold LF; have := Nat.div_le_self (lgN n) (tF n m); omega
   have hl1 : 1 ≤ lgN n := one_le_lgN n
-  have hlog_le : Nat.log 2 n ≤ lgN n := le_max_right _ _
-  have hf4 : f ^ 4 ≤ lgN n ^ 3 := le_trans (F_pow_four_le n) (Nat.pow_le_pow_left hlog_le 3)
-  have hf1 : (f + 1) ^ 4 ≤ 16 * lgN n ^ 3 := by
-    rcases Nat.eq_zero_or_pos f with h0 | h0
-    · rw [h0]; have : 1 ≤ lgN n ^ 3 := Nat.one_le_pow _ _ hl1; omega
-    · have : f + 1 ≤ 2 * f := by omega
-      calc (f + 1) ^ 4 ≤ (2 * f) ^ 4 := Nat.pow_le_pow_left this 4
-        _ = 16 * f ^ 4 := by ring
-        _ ≤ 16 * lgN n ^ 3 := by omega
-  have h2 : lgN n ^ 4 ≤ A ^ 6 * (f + 1) ^ 4 := by
-    have := Nat.pow_le_pow_left h1 2
-    calc lgN n ^ 4 = (lgN n ^ 2) ^ 2 := by ring
-      _ ≤ (A ^ 3 * (f + 1) ^ 2) ^ 2 := this
-      _ = A ^ 6 * (f + 1) ^ 4 := by ring
-  have h3 : lgN n ^ 4 ≤ A ^ 6 * (16 * lgN n ^ 3) := le_trans h2 (Nat.mul_le_mul le_rfl hf1)
-  have h4 : lgN n ≤ 16 * A ^ 6 := by
-    have hpos : 0 < lgN n ^ 3 := by positivity
-    have : lgN n * lgN n ^ 3 ≤ (16 * A ^ 6) * lgN n ^ 3 := by
-      calc lgN n * lgN n ^ 3 = lgN n ^ 4 := by ring
-        _ ≤ A ^ 6 * (16 * lgN n ^ 3) := h3
-        _ = (16 * A ^ 6) * lgN n ^ 3 := by ring
-    exact Nat.le_of_mul_le_mul_right this hpos
-  exact h4.trans (Nat.mul_le_mul_left _ (Nat.pow_le_pow_left (tpar_le_tF n m) 6))
+  have ht1 : 1 ≤ tF n m ^ 12 := Nat.one_le_pow _ _ (by omega)
+  -- the uniform cap strength
+  have hlg256 : lgN n ≤ 256 * tF n m ^ 12 := le_trans hphys (Nat.mul_le_mul_right _ hC)
+  -- the density factor of `chdRho`
+  have hA : 3 * (LF n m + 1) + 3 * δ ≤ 22 * (lgN n + 1) := by omega
+  have hA2 : 22 * (lgN n + 1) ≤ 5654 * tF n m ^ 12 := by
+    have h1 : 22 * (lgN n + 1) ≤ 22 * (256 * tF n m ^ 12 + 1) := by
+      have := hlg256
+      have : lgN n + 1 ≤ 256 * tF n m ^ 12 + 1 := by omega
+      exact Nat.mul_le_mul_left _ this
+    have h2 : 22 * (256 * tF n m ^ 12 + 1) = 5632 * tF n m ^ 12 + 22 := by ring
+    have h3 : 5632 * tF n m ^ 12 + 22 ≤ 5654 * tF n m ^ 12 := by
+      have h4 : 22 ≤ 22 * tF n m ^ 12 := Nat.le_mul_of_pos_right _ ht1
+      have h5 : 5632 * tF n m ^ 12 + 22 * tF n m ^ 12 = 5654 * tF n m ^ 12 := by ring
+      omega
+    omega
+  have hrho : chdRho (tF n m) δ (LF n m) ≤ 5654 * tF n m ^ 12 * (2 * tF n m ^ 2 * 2 ^ tF n m) :=
+    Nat.mul_le_mul_right _ (le_trans hA hA2)
+  have ht2 : tF n m < 2 ^ tF n m := Nat.lt_two_pow_self
+  have hP : 8 ≤ tF n m ^ 14 * 2 ^ tF n m := by
+    have h8 : 2 ^ 3 ≤ 2 ^ tF n m := Nat.pow_le_pow_right (by norm_num) (by omega)
+    have h1 : 1 ≤ tF n m ^ 14 := Nat.one_le_pow _ _ (by omega)
+    calc 8 = 1 * 8 := by ring
+      _ ≤ tF n m ^ 14 * 2 ^ tF n m := Nat.mul_le_mul h1 h8
+  have e1 : 8 * chdRho (tF n m) δ (LF n m) + 8 ≤ 90465 * (tF n m ^ 14 * 2 ^ tF n m) := by
+    have hrw : 5654 * tF n m ^ 12 * (2 * tF n m ^ 2 * 2 ^ tF n m) =
+        11308 * (tF n m ^ 14 * 2 ^ tF n m) := by ring
+    rw [hrw] at hrho
+    nlinarith [hrho, hP]
+  have e2 : tF n m ^ 14 < 2 ^ (14 * tF n m) := by
+    have h := Nat.pow_lt_pow_left ht2 (show (14 : ℕ) ≠ 0 by norm_num)
+    have h2 : (2 ^ tF n m) ^ 14 = 2 ^ (14 * tF n m) := by rw [← pow_mul, mul_comm]
+    rwa [h2] at h
+  have e4 : tF n m ^ 14 * 2 ^ tF n m < 2 ^ (14 * tF n m) * 2 ^ tF n m :=
+    Nat.mul_lt_mul_of_pos_right e2 (by positivity)
+  have e6 : 2 ^ (14 * tF n m) * 2 ^ tF n m = 2 ^ (15 * tF n m) := by
+    rw [← pow_add]; congr 1; ring
+  rw [e6] at e4
+  have e7 : 90465 * (tF n m ^ 14 * 2 ^ tF n m) < 2 ^ 17 * 2 ^ (15 * tF n m) := by
+    have h17 : (90465 : ℕ) < 2 ^ 17 := by norm_num
+    calc 90465 * (tF n m ^ 14 * 2 ^ tF n m) ≤ 90465 * 2 ^ (15 * tF n m) :=
+          Nat.mul_le_mul_left _ e4.le
+      _ < 2 ^ 17 * 2 ^ (15 * tF n m) := Nat.mul_lt_mul_of_pos_right h17 (by positivity)
+  have e8 : 2 ^ 17 * 2 ^ (15 * tF n m) ≤ 2 ^ (17 * tF n m) := by
+    rw [← pow_add]
+    apply Nat.pow_le_pow_right (by norm_num)
+    omega
+  have hlog : Nat.log 2 (8 * chdRho (tF n m) δ (LF n m) + 8) < 17 * tF n m :=
+    Nat.log_lt_of_lt_pow (by omega) (by omega)
+  -- `211 · 17 + 441/t ≤ 3587 + 239 = 3826` (using `t ≥ 16`, `239·16 = 3824 ≥ 441`)
+  have hlog17 : Nat.log 2 (8 * chdRho (tF n m) δ (LF n m) + 8) ≤ 17 * tF n m := hlog.le
+  have h1 : 211 * Nat.log 2 (8 * chdRho (tF n m) δ (LF n m) + 8) ≤ 211 * (17 * tF n m) :=
+    Nat.mul_le_mul_left _ hlog17
+  have h2 : 211 * (17 * tF n m) = 3587 * tF n m := by ring
+  have h3 : 441 ≤ 239 * tF n m := by omega
+  have h4 : 3587 * tF n m + 239 * tF n m = 3826 * tF n m := by ring
+  omega
+
+/-- **The recursive-level insertion charge for a threshold `F`**: the F-parametric statement (cap
+condition `F n ≤ lgN n`, density window `dd ≤ F n + 1`, out-degree `δ ≤ 5 dd`). -/
+theorem mc_ins_le_pow (F : ℕ → ℕ) (n m δ C : ℕ) (hC : C ≤ 256)
+    (hδ : δ ≤ 5 * dd n m) (hdd : dd n m ≤ F n + 1) (hFle : F n ≤ lgN n)
+    (hphys : lgN n ≤ C * tF n m ^ 12) :
+    211 * Nat.log 2 (8 * chdRho (tF n m) δ (LF n m) + 8) + 441 ≤ 3826 * tF n m := by
+  have h1 : δ ≤ 5 * (lgN n + 1) := by
+    have : δ ≤ 5 * (F n + 1) := by omega
+    omega
+  exact mc_ins_le_core n m δ C hC h1 hphys
 
 /-- **The recursive-level insertion charge is `O(t)` on the dispatch branch** (checklist I7/I13):
 `211 log₂(8ρ + 8) + 441 ≤ 3826 t` for `ρ = chdRho t δ L0`, `δ ≤ 5 dd`, `dd ≤ F + 1`. -/
 theorem mc_ins_le (n m δ : ℕ) (hδ : δ ≤ 5 * dd n m) (hdd : dd n m ≤ Frontier.GateCCalc.F n + 1) :
-    211 * Nat.log 2 (8 * chdRho (tF n m) δ (LF n m) + 8) + 441 ≤ 3826 * tF n m := by
-  have ht : 16 ≤ tF n m := sixteen_le_tF n m
-  have hlg := mc_lgN_le n m hdd
-  have hF := mc_F_le n
-  have hLF : LF n m ≤ lgN n + 1 := by unfold LF; have := Nat.div_le_self (lgN n) (tF n m); omega
-  have hl1 : 1 ≤ lgN n := one_le_lgN n
-  have hA : 3 * (LF n m + 1) + 3 * δ ≤ 864 * tF n m ^ 6 := by
-    have : 3 * (LF n m + 1) + 3 * δ ≤ 54 * lgN n := by
-      have : δ ≤ 5 * (Frontier.GateCCalc.F n + 1) := le_trans hδ (by omega)
-      omega
-    omega
-  have hrho : chdRho (tF n m) δ (LF n m) ≤ 864 * tF n m ^ 6 * (2 * tF n m ^ 2 * 2 ^ tF n m) := by
-    unfold chdRho; exact Nat.mul_le_mul_right _ hA
-  have ht2 : tF n m < 2 ^ tF n m := Nat.lt_two_pow_self
-  have hP : 8 ≤ tF n m ^ 8 * 2 ^ tF n m := by
-    have h8 : 2 ^ 3 ≤ 2 ^ tF n m := Nat.pow_le_pow_right (by norm_num) (by omega)
-    have h1 : 1 ≤ tF n m ^ 8 := Nat.one_le_pow _ _ (by omega)
-    have := Nat.mul_le_mul h1 h8
-    simpa using this
-  have e1 : 8 * chdRho (tF n m) δ (LF n m) + 8 ≤ 13825 * (tF n m ^ 8 * 2 ^ tF n m) := by
-    have : 864 * tF n m ^ 6 * (2 * tF n m ^ 2 * 2 ^ tF n m) = 1728 * (tF n m ^ 8 * 2 ^ tF n m) := by ring
-    rw [this] at hrho
-    omega
-  have e2 : tF n m ^ 8 < 2 ^ (8 * tF n m) := by
-    have := Nat.pow_lt_pow_left ht2 (show (8 : ℕ) ≠ 0 by norm_num)
-    rwa [← pow_mul, mul_comm] at this
-  have e4 : tF n m ^ 8 * 2 ^ tF n m < 2 ^ (8 * tF n m) * 2 ^ tF n m :=
-    Nat.mul_lt_mul_of_pos_right e2 (by positivity)
-  have e6 : 2 ^ (8 * tF n m) * 2 ^ tF n m = 2 ^ (9 * tF n m) := by
-    rw [← pow_add]; congr 1; ring
-  rw [e6] at e4
-  have e7 : 13825 * (tF n m ^ 8 * 2 ^ tF n m) < 2 ^ 14 * 2 ^ (9 * tF n m) := by
-    have h14 : (13825 : ℕ) < 2 ^ 14 := by norm_num
-    calc 13825 * (tF n m ^ 8 * 2 ^ tF n m) ≤ 13825 * 2 ^ (9 * tF n m) := Nat.mul_le_mul_left _ e4.le
-      _ < 2 ^ 14 * 2 ^ (9 * tF n m) := Nat.mul_lt_mul_of_pos_right h14 (by positivity)
-  have e8 : 2 ^ 14 * 2 ^ (9 * tF n m) ≤ 2 ^ (18 * tF n m) := by
-    rw [← pow_add]; exact Nat.pow_le_pow_right (by norm_num) (by omega)
-  have hlog : Nat.log 2 (8 * chdRho (tF n m) δ (LF n m) + 8) < 18 * tF n m :=
-    Nat.log_lt_of_lt_pow (by omega) (by omega)
-  omega
+    211 * Nat.log 2 (8 * chdRho (tF n m) δ (LF n m) + 8) + 441 ≤ 3826 * tF n m :=
+  mc_ins_le_pow Frontier.GateCCalc.F n m δ 16 (by norm_num) hδ hdd
+    (F_le_lgN n) (t6_le_t12 (mc_lgN_le n m hdd))
 
 /-- **The base-level conversion charge is `O(log t + log dd)`**: `chdIns t k δ L0 0 ≤ 1300 (log₂(t+1) + log₂(dd+1) + 2)`. -/
 theorem mc_ins0_le (n m δ : ℕ) (hδ : δ ≤ 5 * dd n m) :
@@ -374,7 +400,8 @@ theorem fpA_le_of {k hins hext ch ce : ℕ} (hh : hins ≤ ch) (he : hext ≤ ce
 out-degree `δ ≤ 5 dd`), for a graph with at least one edge. -/
 theorem valid_traced (hout : ∀ u e, e ∈ out u ↔ G.src e = u) (hsort : ∀ u, (out u).Pairwise (SortedRel G s))
     (hsimp : ∀ u, ((out u).map G.dst).Nodup) {n m δ : ℕ} (hδ : δ ≤ 5 * dd n m)
-    (hdd : dd n m ≤ Frontier.GateCCalc.F n + 1) (e0 : Fin G.m) {a : ℕ}
+    (hdd : dd n m ≤ lgN n + 1) (hphys : lgN n ≤ 256 * tF n m ^ 12)
+    (e0 : Fin G.m) {a : ℕ}
     (ha : fpA (kF n m) hins hext ≤ a * (kF n m + 1))
     {DCb : DCost} {Blow : WLab G s} (hlow : Blow ≤ initLabels s s) {φ φ' : Finset (Fin G.m)}
     (hI : DelInv G s φ) {res : Result G s} {lg : Log G s (FPData G s)}
@@ -388,6 +415,8 @@ theorem valid_traced (hout : ∀ u e, e ∈ out u ↔ G.src e = u) (hsort : ∀ 
   have hkt : kF n m ≤ tF n m := kF_le_tF n m
   have h3k : 3 * kF n m ≤ tF n m := three_kF_le_tF n m
   have hFPC := fpC_sound (hins := hins) (hext := hext) hout hsort hsimp hk2
+  -- the logarithmic density interface: `δ ≤ 5 dd ≤ 5 (lgN + 1)`
+  have hδ5 : δ ≤ 5 * (lgN n + 1) := by omega
   have hlow' : ∀ x ∈ ({s} : Finset (Fin G.n)), Blow ≤ dis (s := s) x := by
     intro x hx
     rw [Finset.mem_singleton.mp hx, ← initLabels_source]
@@ -486,7 +515,8 @@ theorem valid_traced (hout : ∀ u e, e ∈ out u ↔ G.src e = u) (hsort : ∀ 
   have hcost := tracedCounters_cost_le hL hout hsort hsimp hk2 (C0 := 1 + 950 + 1) (C1 := 735 + 5 + 4)
     (I := 211 * Nat.log 2 (8 * chdRho (tF n m) δ (LF n m) + 8) + 441) (ad := 5) (bd := 1) (nw := 3)
     (a := a) (cI := 3826) (cn := 1) (c9 := 952) (t := tF n m)
-    (c := cValid a) hRC hRA hS hτ ha (mc_kk n m) h3k (mc_ins_le n m δ hδ hdd) (by omega) le_rfl
+    (c := cValid a) hRC hRA hS hτ ha (mc_kk n m) h3k (mc_ins_le_core n m δ 256 (by norm_num) hδ5 hphys)
+    (by omega) le_rfl
     (by unfold cValid; omega)
   -- the merge total
   have hd : ∀ X : lg.Call, X.1.length ≤ LF n m := fun X => by
@@ -544,7 +574,8 @@ heap `DCb` of per-operation cost `≤ cb (log₂(t+1) + log₂(dd+1) + 2)`, the 
 theorem master_cost_C (hout : ∀ u e, e ∈ out u ↔ G.src e = u) (hsort : ∀ u, (out u).Pairwise (SortedRel G s))
     (hsimp : ∀ u, ((out u).map G.dst).Nodup) {n m δ : ℕ} (hn : 1 ≤ n) (hm : 1 ≤ m) (hnm : n ≤ m + 1)
     (hGn : G.n ≤ 2 * n) (hGm : G.m ≤ 2 * m) (hm0 : 0 < G.m) (hδ : δ ≤ 5 * dd n m)
-    (hdd : dd n m ≤ Frontier.GateCCalc.F n + 1) {a : ℕ} (ha : fpA (kF n m) hins hext ≤ a * (kF n m + 1))
+    (hdd : dd n m ≤ lgN n + 1) (hphys : lgN n ≤ 256 * tF n m ^ 12)
+    {a : ℕ} (ha : fpA (kF n m) hins hext ≤ a * (kF n m + 1))
     {DCb : DCost} {cb : ℕ}
     (hbins : DCb.bins ≤ cb * (Nat.log 2 (tF n m + 1) + Nat.log 2 (dd n m + 1) + 1 + 1))
     (hbext : DCb.bext ≤ cb * (Nat.log 2 (tF n m + 1) + Nat.log 2 (dd n m + 1) + 1 + 1))
@@ -555,7 +586,7 @@ theorem master_cost_C (hout : ∀ u e, e ∈ out u ↔ G.src e = u) (hsort : ∀
     (lg.cost : ℝ) ≤ 5100 * (cMaster a cb : ℕ) * ((56 : ℕ) : ℝ) * Frontier.GateCCalc.Tchd n m := by
   have ht16 : 16 ≤ tF n m := sixteen_le_tF n m
   have hk2 : 2 ≤ kF n m := two_le_kF n m
-  obtain ⟨hL, wit, hV⟩ := valid_traced hout hsort hsimp hδ hdd ⟨0, hm0⟩ ha hlow hI hrel
+  obtain ⟨hL, wit, hV⟩ := valid_traced hout hsort hsimp hδ hdd hphys ⟨0, hm0⟩ ha hlow hI hrel
   have hV' := valid_mono_c hV (show cValid a ≤ cMaster a cb by unfold cMaster; omega)
   have hlow' : ∀ x ∈ ({s} : Finset (Fin G.n)), Blow ≤ dis (s := s) x := by
     intro x hx
@@ -636,7 +667,8 @@ theorem master_cost_D (hout : ∀ u e, e ∈ out u ↔ G.src e = u) (hsort : ∀
     (hsimp : ∀ u, ((out u).map G.dst).Nodup) {n m δ : ℕ} (hn : 1 ≤ n) (hm : 1 ≤ m) (hnm : n ≤ m + 1)
     (hGn : G.n ≤ 2 * n) (hGm : G.m ≤ 2 * m) (hm0 : 0 < G.m)
     (hdeg : ∀ u, (Eout G {u}).card ≤ δ) (hδ : δ ≤ 5 * dd n m)
-    (hdd : dd n m ≤ Frontier.GateCCalc.F n + 1) {a : ℕ} (ha : fpA (kF n m) hins hext ≤ a * (kF n m + 1))
+    (hdd : dd n m ≤ lgN n + 1) (hphys : lgN n ≤ 256 * tF n m ^ 12)
+    {a : ℕ} (ha : fpA (kF n m) hins hext ≤ a * (kF n m + 1))
     {DCb : DCost} {cb : ℕ}
     (hbins : DCb.bins ≤ cb * (Nat.log 2 (tF n m + 1) + Nat.log 2 (dd n m + 1) + 1 + 1))
     (hbext : DCb.bext ≤ cb * (Nat.log 2 (tF n m + 1) + Nat.log 2 (dd n m + 1) + 1 + 1))
@@ -648,7 +680,7 @@ theorem master_cost_D (hout : ∀ u e, e ∈ out u ↔ G.src e = u) (hsort : ∀
   have ht16 : 16 ≤ tF n m := sixteen_le_tF n m
   obtain ⟨lgC, hC, -, hle⟩ := chdDL_tele_top (t := tF n m) (δ := δ) hout hsort hsimp (two_le_kF n m)
     (three_kF_le_tF n m) (by omega) hdeg (LF n m) hlow hI hrel
-  have h := master_cost_C hout hsort hsimp hn hm hnm hGn hGm hm0 hδ hdd ha hbins hbext hlow hI hC
+  have h := master_cost_C hout hsort hsimp hn hm hnm hGn hGm hm0 hδ hdd hphys ha hbins hbext hlow hI hC
   have hle' : (lg.cost : ℝ) ≤ (lgC.cost : ℝ) := by exact_mod_cast hle
   exact hle'.trans h
 

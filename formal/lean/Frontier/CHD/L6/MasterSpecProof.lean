@@ -43,6 +43,6 @@ theorem masterSpec_of_goodP {P : ℕ → ℕ → CostPar} {ch ce cb : ℕ} (hP :
   have ha := fpA_le_of (k := CostSkeleton.kF cn cm) (hP.hins cn cm) (hP.hext cn cm)
   have hI : DelInv H src (∅ : Finset (Fin H.m)) := fun e he => absurd he (Finset.notMem_empty e)
   exact master_cost_D (fun _ _ => outL_mem) hM.sorted hM.simple hM.cn_pos hM.cm_pos hM.cn_le hM.sizeN
-    hM.sizeM hm1 hM.deg le_rfl hM.dens ha (hP.bins cn cm) (hP.bext cn cm) hlow hI hrun
+    hM.sizeM hm1 hM.deg le_rfl hM.dens hM.tphys ha (hP.bins cn cm) (hP.bext cn cm) hlow hI hrun
 
 end Frontier.CHD.L6

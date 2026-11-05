@@ -57,7 +57,10 @@ structure MasterIn (H : Graph) (src : Fin H.n) (cn cm : ℕ) : Prop where
   cn_pos : 1 ≤ cn
   mpos : 0 < H.m
   deg : ∀ u : Fin H.n, (BM.Eout H {u}).card ≤ 5 * CostSkeleton.dd cn cm
-  dens : CostSkeleton.dd cn cm ≤ GateCCalc.F cn + 1
+  /-- the cap-free density interface (`dd ≤ lgN + 1`; see `L6.CoreIn.dens`) -/
+  dens : CostSkeleton.dd cn cm ≤ CostSkeleton.lgN cn + 1
+  /-- the cap strength (`lgN ≤ 16 t¹²`; see `L6.CoreIn.tphys`) -/
+  tphys : CostSkeleton.lgN cn ≤ 256 * CostSkeleton.tF cn cm ^ 12
   sorted : ∀ x : Fin H.n, (outL H x).Pairwise (SortedRel H src)
   simple : ∀ x : Fin H.n, ((outL H x).map H.dst).Nodup
 

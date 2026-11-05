@@ -54,6 +54,7 @@ theorem CoreIn.of_unchanged {e : ℕ} {ps : List Stmt} {H : Graph} {src : Fin H.
   nxtLen := by rw [(hu.warr _ hNxt).2]; exact h.nxtLen
   cap := by rw [hu.cap]; exact h.cap
   dens := h.dens
+  tphys := h.tphys
 
 /-! ## The master theorem's graph facts -/
 
@@ -82,6 +83,7 @@ theorem masterIn_of_coreIn {e : ℕ} {ps : List Stmt} {H : Graph} {src : Fin H.n
   mpos := hm
   deg u := (eout_card_le h.csr u).trans ((h.gD u).trans h.dd)
   dens := h.dens
+  tphys := h.tphys
   sorted x := h.sorted src x
   simple := h.simple
 

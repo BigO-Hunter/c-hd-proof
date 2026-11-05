@@ -85,8 +85,12 @@ structure CoreIn (e : ℕ) (ps : List Stmt) (H : Graph) (src : Fin H.n) (cn cm :
   hdLen : H.n ≤ t.wlen "gHd"
   nxtLen : H.m ≤ t.wlen "gNxt"
   cap : (cn + cm + 2) ^ (e + 1) ≤ t.cap
-  /-- density on the dispatch branch (`m ≤ n F(n)`): needed by the insert charge `lg δ = O(t)` -/
-  dens : CostSkeleton.dd cn cm ≤ GateCCalc.F cn + 1
+  /-- **the density interface** (cap-free): on the dispatch branch `m ≤ n F(n)` the density is at most
+  `lgN + 1`.  Any threshold with `F ≤ lgN` provides it, so nothing above this field mentions `F`. -/
+  dens : CostSkeleton.dd cn cm ≤ CostSkeleton.lgN cn + 1
+  /-- **the cap strength** (cap-family-uniform): on the window, `lgN ≤ 16 t¹²` — the single arithmetic
+  hypothesis the master cost theorem asks of a cap (`p = 2` for `⌊lg^{3/4}⌋`, `p = 4` for `⌊lg^{7/8}⌋`). -/
+  tphys : CostSkeleton.lgN cn ≤ 256 * CostSkeleton.tF cn cm ^ 12
 
 /-- **The remaining gap**: a C-HD core RAM program `core` with constant `Kc`. -/
 def CoreSpec (e : ℕ) (ps : List Stmt) (core : Stmt) (Kc : ℝ) : Prop :=
@@ -173,6 +177,17 @@ theorem dens_cn (n m : ℕ) (hpre : m ≤ n * GateCCalc.F n) (hn : 1 ≤ n) :
   · rw [min_eq_right (by omega)]
     have : m / (m + 1) = 0 := Nat.div_eq_of_lt (by omega)
     omega
+
+theorem dens_cn_log (n m : ℕ) (hpre : m ≤ n * GateCCalc.F n) (hn : 1 ≤ n) :
+    CostSkeleton.dd (min n (m + 1)) m ≤ CostSkeleton.lgN (min n (m + 1)) + 1 := by
+  have h := dens_cn n m hpre hn
+  have := CostSkeleton.F_le_lgN (min n (m + 1))
+  omega
+
+/-- The cap strength at the core parameters `(min n (m+1), m)`, from the window. -/
+theorem tphys_cn (n m : ℕ) (hpre : m ≤ n * GateCCalc.F n) (hn : 1 ≤ n) :
+    CostSkeleton.lgN (min n (m + 1)) ≤ 256 * CostSkeleton.tF (min n (m + 1)) m ^ 12 :=
+  CostSkeleton.lgN_le_tF_pow12 GateCCalc.F _ m (dens_cn n m hpre hn) (CostSkeleton.F_pow_eight_le _)
 
 theorem body_spec (e : ℕ) (he : 3 ≤ e) (ps : List Stmt) (core : Stmt) (Kc : ℝ) (hKc : 0 ≤ Kc)
     (hcore : CoreSpec e ps core Kc) :
@@ -277,7 +292,8 @@ theorem body_spec (e : ℕ) (he : 3 ≤ e) (ps : List Stmt) (core : Stmt) (Kc : 
       cap := by
         rw [hcapt]
         exact Nat.pow_le_pow_left (by have := min_le_left G.n (G.m + 1); omega) _
-      dens := dens_cn G.n G.m hpre.1 hn1 }
+      dens := dens_cn_log G.n G.m hpre.1 hn1
+      tphys := tphys_cn G.n G.m hpre.1 hn1 }
     refine runs_seq ((hcore H (R.rep s) _ _ (t.charge 1) hIn).mono ?_)
     rintro r2 ⟨hout, ⟨hk2a, hk2l⟩, ⟨hr2a, hr2l⟩, hn2, -, -, hcap2, hc2⟩
     have hnt : (t.charge 1).w "n" = G.n := by
