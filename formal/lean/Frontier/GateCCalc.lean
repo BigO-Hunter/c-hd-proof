@@ -242,6 +242,10 @@ lemma mu_window : ∀ᶠ n : ℕ in atTop,
 `a = Nat.log 2 n` (O(log n) word operations). -/
 def F (n : ℕ) : ℕ := Nat.sqrt (Nat.sqrt ((Nat.log 2 n) ^ 3))
 
+/-- The `7/8` threshold `F87 n = ⌊(log₂ n)^(7/8)⌋`, the same style of integer computation as `F`:
+three nested integer square roots of `a^7`, `a = Nat.log 2 n` (O(log n) word operations). -/
+def F87 (n : ℕ) : ℕ := Nat.sqrt (Nat.sqrt (Nat.sqrt ((Nat.log 2 n) ^ 7)))
+
 lemma le_sqrt_sqrt_of_real {r a : ℕ} (h : (r : ℝ) ≤ (a : ℝ) ^ ((3 : ℝ) / 4)) :
     r ≤ Nat.sqrt (Nat.sqrt (a ^ 3)) := by
   have hr0 : (0 : ℝ) ≤ r := Nat.cast_nonneg r

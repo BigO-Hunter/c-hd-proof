@@ -923,12 +923,16 @@ theorem F_le_lgN (n : ℕ) : Frontier.GateCCalc.F n ≤ lgN n :=
   pow_four_le_lgN (F_pow_four_le n)
 
 /-- **The density interface used above the arithmetic**: on the window, the density is at most
-`lgN + 1`.  Cap-free (it holds for every threshold with `F ≤ lgN`). -/
-theorem dd_le_lgN_add_one (n m : ℕ) (hn : 1 ≤ n) (hw : m ≤ n * Frontier.GateCCalc.F n) :
-    dd n m ≤ lgN n + 1 := by
-  have h1 := dd_le_F n m hn hw
-  have h2 := F_le_lgN n
+`lgN + 1`, for any threshold with `F ≤ lgN` (cap-free). -/
+theorem dd_le_lgN_add_one_of (F : ℕ → ℕ) (n m : ℕ) (hF : F n ≤ lgN n) (hn : 1 ≤ n)
+    (hw : m ≤ n * F n) : dd n m ≤ lgN n + 1 := by
+  have h1 := dd_le_of_window F n m hn hw
   omega
+
+/-- The `3/4` cap instance of `dd_le_lgN_add_one_of`. -/
+theorem dd_le_lgN_add_one (n m : ℕ) (hn : 1 ≤ n) (hw : m ≤ n * Frontier.GateCCalc.F n) :
+    dd n m ≤ lgN n + 1 :=
+  dd_le_lgN_add_one_of _ n m (F_le_lgN n) hn hw
 
 /-- `(f+1)⁴ ≤ 16 lgN³` from `f⁴ ≤ lgN³` (the shape every `⌊lg^{θ}⌋` cap with `θ ≤ 3/4` provides). -/
 theorem succ_pow_four_le {f n : ℕ} (hf4 : f ^ 4 ≤ lgN n ^ 3) : (f + 1) ^ 4 ≤ 16 * lgN n ^ 3 := by

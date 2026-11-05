@@ -164,6 +164,7 @@ import Frontier.CHD.TreeRAM8
 import Frontier.CHD.BL2LX
 import Frontier.CHD.BL2Find
 import Frontier.CHD.MasterCost
+import Frontier.CHD.Cap87
 import Frontier.Counterexamples
 import Frontier.CHD.L6.SpineIface
 import Frontier.CHD.L6.CoreSpecProof
