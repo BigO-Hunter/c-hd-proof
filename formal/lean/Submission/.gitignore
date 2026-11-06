@@ -1,3 +1,3 @@
-Submission/*.olean
-Submission/*.ilean
-Submission/*.trace
+*.olean
+*.ilean
+*.trace
