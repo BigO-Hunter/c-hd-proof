@@ -5,6 +5,7 @@ import Frontier.CHD.RamBodyFinB
 import Frontier.CHD.RamBodyFin
 import Frontier.CHD.DProInst
 import Frontier.CHD.CSRSortedOf
+import Frontier.CHD.Cap87
 
 /-!
 # The C-HD Gate-C theorem: final assembly (agent-10)
@@ -56,6 +57,10 @@ abbrev coreC : Stmt := coreTop (spineOf (spinePro BL2.fpAlloc DPro.dProC))
 
 /-- **The C-HD witness program.** -/
 def chdProgram : Program := chdProg 160 psC coreC
+
+/-- **The C-HD witness program at the `7/8` threshold**: the same body, the `7/8` dispatcher
+(`thrProg87`, threshold `F87`). -/
+def chdProgram87 : Program := chdProgOf Dispatch.thrProg87 160 psC coreC
 
 /-- The constants. -/
 abbrev KD : ℕ := PullWrap.Kpw + 6
@@ -144,10 +149,61 @@ theorem chd_exact_within :
     (fun _ _ _ _ => n_LWd) (fun _ _ _ _ => n_LWp) (fun _ _ _ _ => n_DP) (fun _ _ _ _ => n_DPr)
     (fun _ _ _ _ => n_DLA) (fun _ _ _ _ => n_DLV) (fun _ _ _ _ => n_DLR)
     (hbig160 (by norm_num) (by unfold DPro.dKd; have := kmN_le; omega))
+    GateCCalc.F (fun n => 16 * (Nat.log 2 n * Nat.log 2 n * Nat.log 2 n) + 16) Dispatch.thrProg
+    CostSkeleton.F_le_lgN CostSkeleton.F_pow_eight_le
+    (fun n m hn => Dispatch.capNeed_thrProg_lt 160 (by norm_num) n m hn) Dispatch.thrProg_thrSpec
 
 /-- **The frozen Gate-C target.** -/
 theorem chd_CHDTarget : GateCTarget.CHDTarget GateCCalc.F :=
   ⟨chdProgram, chd_exact_within.1, bodyC KcC + 65536 * 9 + 100, chd_exact_within.2⟩
+
+set_option maxHeartbeats 8000000 in
+/-- **The C-HD witness program at the `7/8` cap** is exact and runs within `C · Tdisp F87 n m`:
+the same replay as `chd_exact_within`, with the `7/8` threshold program and its capacity hypothesis
+(`capNeed_thrProg87_lt` needs the word exponent `160`, which the witness already has). -/
+theorem chd_exact_within87 :
+    chdProgram87.Exact ∧ ∀ (G : Graph) (s : Fin G.n),
+      chdProgram87.RunsWithin G s
+        ((bodyC KcC + 65536 * 9 + 100) * GateCTarget.Tdisp GateCCalc.F87 G.n G.m) := by
+  have hK := hKD
+  have hKC : KC = 210000 := rfl
+  have hKoC : KoC = 4 * KD + 322 := rfl
+  exact chdProg_of_DLayer 160 (by norm_num) (DLf := DLfC) (newS := DLI.dsNew) (insS := DLI.dsIns)
+    (emptyS := DLI.dsEmpty) (pullS := DLI.pullD) (mergeS := DLI.dsMerge) (delBS := DLI.dsDelB)
+    (finP := finPC) (dPro := DPro.dProC) [SelectRAM.selBody SelectRAM.entLess 1]
+    (fun _ _ _ _ => rfl) (fun _ _ _ _ => rfl) (fun _ _ _ _ => rfl) (fun _ _ _ _ => rfl)
+    (fun _ _ _ _ => rfl) (fun _ _ _ _ => rfl)
+    (KD := KD) (K := KC) (Ko := KoC) (Kfin := RamBody.Kfin KD) (Cfin := 100)
+    (fun _ _ _ _ => le_rfl)
+    (by unfold RamBody.Kfin; omega) (by omega)
+    (fun _ _ _ _ => by show KD + 22 + 71 + postK KD 27 + 1 ≤ KoC; unfold postK; omega)
+    (fun _ _ cn cm => DPro.dParC_ucap cn cm)
+    (fun _ _ _ _ => rfl)
+    (fun _ _ _ _ => by show KD ≤ KC; omega)
+    (fun _ _ cn cm => by show CostSkeleton.LF cn cm ≤ CostSkeleton.LF cn cm + 1; omega)
+    (DPro.dProSpecC 160 (by norm_num) psC rfl)
+    (fun H src cn cm hMI l hl => finB_uniform (DLfC H src cn cm) (PIfOf chdP H src cn cm) rfl rfl
+      (fin_spec_stmt (DLfC H src cn cm) (PIfOf chdP H src cn cm)
+        ⟨n_fin.dA, n_fin.dR, n_fin.dV, n_fin.pA, n_fin.pR⟩
+        (DDelW.delWBU_mkDL _ _ _ _ _ _ _ _ _ _ _ _ _) (WinScan.csrSorted_of_outL hMI.sorted))
+      le_rfl l hl)
+    (fun _ _ _ _ => n_DW) (fun _ _ _ _ => n_PW) (fun _ _ _ _ => n_PA) (DPro.hPd_dPro chdP)
+    (fun _ _ _ _ => ⟨n_Pb1, n_Pb2⟩)
+    n_foot
+    (RW := [])
+    (fun _ _ _ _ => ⟨n_body.dR, n_body.dA, n_body.pR, n_body.pA, n_body.rW⟩)
+    (fun _ _ _ _ => ⟨n_post.lab, n_post.vr, n_post.blkW, n_post.blkV, n_post.CWd, n_post.gdel,
+      n_post.pA, n_post.pR⟩)
+    (fun _ _ _ _ => n_LWd) (fun _ _ _ _ => n_LWp) (fun _ _ _ _ => n_DP) (fun _ _ _ _ => n_DPr)
+    (fun _ _ _ _ => n_DLA) (fun _ _ _ _ => n_DLV) (fun _ _ _ _ => n_DLR)
+    (hbig160 (by norm_num) (by unfold DPro.dKd; have := kmN_le; omega))
+    GateCCalc.F87 (fun n => 256 * Nat.log 2 n ^ 7 + 256) Dispatch.thrProg87
+    Frontier.CHD.Cap87.F87_le_lgN Frontier.CHD.Cap87.F87_pow_eight_le
+    (fun n m hn => Dispatch.capNeed_thrProg87_lt 160 (by norm_num) n m hn) Dispatch.thrProg87_thrSpec
+
+/-- **The frozen Gate-C target at the `7/8` cap.** -/
+theorem chd_CHDTarget87 : GateCTarget.CHDTarget GateCCalc.F87 :=
+  ⟨chdProgram87, chd_exact_within87.1, bodyC KcC + 65536 * 9 + 100, chd_exact_within87.2⟩
 
 /-- **Gate C** (CostModel v2): a strict worst-case improvement over `O(m + n log n)` along a density
 profile inside the window where Dijkstra is the best known bound. -/
@@ -157,4 +213,6 @@ end Frontier.CHD.Final
 
 #print axioms Frontier.CHD.Final.chd_exact_within
 #print axioms Frontier.CHD.Final.chd_CHDTarget
+#print axioms Frontier.CHD.Final.chd_exact_within87
+#print axioms Frontier.CHD.Final.chd_CHDTarget87
 #print axioms Frontier.CHD.Final.chd_gateC

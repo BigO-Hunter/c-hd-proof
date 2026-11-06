@@ -880,6 +880,25 @@ theorem chdTarget_of_body (e : ℕ) (he : 3 ≤ e) (ps : List Stmt) (chd : Stmt)
     obtain ⟨f, r, hr, -, hc⟩ := hruns G s
     exact ⟨f, r, hr, hc⟩
 
+/-- **The dispatcher reduces the Gate-C target `CHDTarget F` to a specification of the C-HD body**,
+for an arbitrary threshold program `thr` computing `F` (this is the shape every cap row uses). -/
+theorem chdTarget_of_bodyOf (e : ℕ) (he : 3 ≤ e) (ps : List Stmt) (chd : Stmt) (thr : Stmt)
+    (F capNeed : ℕ → ℕ) (C₁ : ℝ) (hC₁ : 0 ≤ C₁)
+    (hcapNeed : ∀ n m : ℕ, 16 ≤ n → capNeed n < (n + m + 2) ^ (e + 1))
+    (hthr : ThrSpec thr F capNeed)
+    (hchd : BodySpec e ps chd (fun G => G.m ≤ G.n * F G.n ∧ 16 ≤ Nat.log 2 G.n)
+      (fun n m => C₁ * GateCCalc.Tchd n m)) :
+    GateCTarget.CHDTarget F := by
+  have hruns := dispatch_runs_of e he ps thr chd BF.prog F capNeed C₁ 9 hC₁ (by norm_num)
+    hcapNeed hthr hchd (bf_bodySpec e ps)
+  refine ⟨⟨dispatchProgOf thr chd BF.prog, e, ps⟩, ?_, C₁ + 65536 * 9 + 100, ?_⟩
+  · intro G s
+    obtain ⟨f, r, hr, hsol, -⟩ := hruns G s
+    exact ⟨f, r, hr, hsol⟩
+  · intro G s
+    obtain ⟨f, r, hr, -, hc⟩ := hruns G s
+    exact ⟨f, r, hr, hc⟩
+
 /-- **The dispatcher reduces the `7/8` Gate-C target to a specification of the C-HD body.** -/
 theorem chdTarget_of_body87 (e : ℕ) (he : 160 ≤ e) (ps : List Stmt) (chd : Stmt) (C₁ : ℝ)
     (hC₁ : 0 ≤ C₁)

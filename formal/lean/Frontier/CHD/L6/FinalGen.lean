@@ -29,8 +29,9 @@ open Frontier Frontier.RAM Frontier.RAM.LabRAM Frontier.CHD Frontier.CHD.RamLeve
   Frontier.CHD.RamBody WExpr Stmt
 
 set_option maxHeartbeats 1000000 in
-/-- **The named C-HD witness from a D layer.** -/
-theorem chdProg_of_DLayer (e : ℕ) (he : 32 ≤ e)
+/-- **The named C-HD witness from a D layer**, for an arbitrary threshold program `thr` computing
+the density threshold `F`. -/
+theorem chdProg_of_DLayer (e : ℕ) (he : 160 ≤ e)
     {DLf : ∀ (H : Graph) (src : Fin H.n) (cn cm : ℕ), RamSpine.DLayer H src Tz}
     {newS insS emptyS pullS mergeS delBS finP dPro : Stmt} (extra : List Stmt)
     -- the closed texts of the D operations
@@ -91,14 +92,18 @@ theorem chdProg_of_DLayer (e : ℕ) (he : 32 ≤ e)
     (hDLR : ∀ H src cn cm, ∀ a ∈ (DLf H src cn cm).dWR, a ∉ BL2Inst.fpAtWR (G := H) (s := src))
     -- the word exponent
     (hbig : 12 + ((K : ℝ) + (13000 + 34 * ((100 : ℕ) + (Kd : ℝ))) + 0) * (kmaster 1 1 1000 + 1) +
-      |(0 : ℝ)| + |((10 ^ 9 + 64 * (K + 27 + 1) ^ 4 * 10 ^ 56 : ℕ) : ℝ)| ≤ (4 : ℝ) ^ (e + 1 - 8)) :
+      |(0 : ℝ)| + |((10 ^ 9 + 64 * (K + 27 + 1) ^ 4 * 10 ^ 56 : ℕ) : ℝ)| ≤ (4 : ℝ) ^ (e + 1 - 8))
+    (F capNeed : ℕ → ℕ) (thr : Stmt) (hFl : ∀ n, F n ≤ CostSkeleton.lgN n)
+    (hcap8 : ∀ n, F n ^ 8 ≤ Nat.log 2 n ^ 7)
+    (hcapNeed : ∀ n m : ℕ, 16 ≤ n → capNeed n < (n + m + 2) ^ (e + 1))
+    (hthr : Dispatch.ThrSpec thr F capNeed) :
     let core := coreTop (spineOf (spinePro BL2.fpAlloc dPro))
     let ps := chdPs newS insS (recText BL2Inst.fpAtRaw newS insS emptyS
         (iterText pullS mergeS delBS insS) finP) extra
     let Kc : ℝ := ((K : ℝ) + (13000 + 34 * ((100 : ℕ) + (Kd : ℝ))) + 0) * (kmaster 1 1 1000 + 1) + 250
-    (chdProg e ps core).Exact ∧ ∀ (G : Graph) (s : Fin G.n),
-      (chdProg e ps core).RunsWithin G s
-        ((bodyC Kc + 65536 * 9 + 100) * GateCTarget.Tdisp GateCCalc.F G.n G.m) := by
+    (chdProgOf thr e ps core).Exact ∧ ∀ (G : Graph) (s : Fin G.n),
+      (chdProgOf thr e ps core).RunsWithin G s
+        ((bodyC Kc + 65536 * 9 + 100) * GateCTarget.Tdisp F G.n G.m) := by
   intro core ps Kc
   -- the level step
   have hs := hs_of_parts (DLf := DLf) (body0 := RamSpine.baseProgC newS insS) (fp := BL2Inst.fpAtRaw)
@@ -138,7 +143,7 @@ theorem chdProg_of_DLayer (e : ℕ) (he : 32 ≤ e)
   exact chdProg_of_step e he newS insS (recText BL2Inst.fpAtRaw newS insS emptyS
       (iterText pullS mergeS delBS insS) finP) extra hnew hinsS hKD hKb hucapF hDW hPW hPA hD hPd hPb
     hfoot (fun cn cm => baseReq_le_SlfC K 27 cn cm) (by norm_num) (fun n m => SlfC_le K 27 n m)
-    hs hbig
+    hs hbig F capNeed thr hFl hcap8 hcapNeed hthr
 
 /-- **The word exponent 160 fits the final constants** (for `K ≤ 10^6`, `Kd ≤ 10^14`). -/
 theorem hbig160 {K Kd : ℕ} (hK : K ≤ 10 ^ 6) (hKd : Kd ≤ 10 ^ 14) :

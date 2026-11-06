@@ -64,6 +64,11 @@ theorem chdTargetU_imp_gateC : CHDTargetU → GateC := by
 theorem chdTarget_F_imp_gateC : CHDTarget GateCCalc.F → GateC :=
   chdTarget_imp_gateC GateCCalc.F F_dominates
 
+/-- The `7/8` corollary: proving `CHDTarget GateCCalc.F87` (the threshold
+`⌊(log₂ n)^(7/8)⌋`) establishes CostModel's Gate C as well — a wider density window. -/
+theorem chdTarget_F87_imp_gateC : CHDTarget GateCCalc.F87 → GateC :=
+  chdTarget_imp_gateC GateCCalc.F87 F87_dominates
+
 end Frontier.GateCTarget
 
 #print axioms Frontier.GateCTarget.chdTarget_imp_gateC

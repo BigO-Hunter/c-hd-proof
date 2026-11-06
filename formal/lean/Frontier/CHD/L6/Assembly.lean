@@ -88,8 +88,9 @@ procedures the D layer calls (agent-05's recursive select `selBody entLess 1` at
 abbrev chdPs (newS insS recC : Stmt) (extra : List Stmt) : List Stmt :=
   RamSpine.bmsspProc (RamSpine.baseProgC newS insS) recC :: extra
 
-/-- **The C-HD target from the D layer and the level step** (everything else discharged). -/
-theorem chdTarget_of_step (e : ℕ) (he : 32 ≤ e) (newS insS recC : Stmt) (extra : List Stmt)
+/-- **The C-HD target from the D layer and the level step** (everything else discharged), for an
+arbitrary threshold program `thr` computing the density threshold `F`. -/
+theorem chdTarget_of_step (e : ℕ) (he : 160 ≤ e) (newS insS recC : Stmt) (extra : List Stmt)
     {DLf : ∀ (H : Graph) (src : Fin H.n) (cn cm : ℕ), RamSpine.DLayer H src Tz}
     (hnew : ∀ H src cn cm, (DLf H src cn cm).new = newS)
     (hinsS : ∀ H src cn cm, (DLf H src cn cm).ins = insS)
@@ -124,17 +125,22 @@ theorem chdTarget_of_step (e : ℕ) (he : 32 ≤ e) (newS insS recC : Stmt) (ext
         (chdP cn cm).DCb (BM.chdM (CostSkeleton.tF cn cm)) (BM.chdTau (CostSkeleton.tF cn cm))
         (CostSkeleton.LF cn cm) (chdBodyP newS insS recC) K (Slf cn cm) (SbF cn cm) (l + 1))
     (hbig : 12 + ((K : ℝ) + (13000 + 34 * ((100 : ℕ) + (Kd : ℝ))) + 0) * (kmaster 1 1 1000 + 1) +
-      |(0 : ℝ)| + |(Kpol : ℝ)| ≤ (4 : ℝ) ^ (e + 1 - Dp)) :
-    GateCTarget.CHDTarget GateCCalc.F :=
-  chdTarget_of_levels e he (chdPs newS insS recC extra) (chdBodyP newS insS recC)
-    rfl hfoot goodP_chdP hD hPd hPb hDp (fun cn cm => sbF_pos cn cm _) hSl (hucap_of hucapF)
+      |(0 : ℝ)| + |(Kpol : ℝ)| ≤ (4 : ℝ) ^ (e + 1 - Dp))
+    (F capNeed : ℕ → ℕ) (thr : Stmt) (hFl : ∀ n, F n ≤ CostSkeleton.lgN n)
+    (hcap8 : ∀ n, F n ^ 8 ≤ Nat.log 2 n ^ 7)
+    (hcapNeed : ∀ n m : ℕ, 16 ≤ n → capNeed n < (n + m + 2) ^ (e + 1))
+    (hthr : Dispatch.ThrSpec thr F capNeed) :
+    GateCTarget.CHDTarget F :=
+  chdTarget_of_levels_of F capNeed thr hFl hcap8 e he (chdPs newS insS recC extra)
+    (chdBodyP newS insS recC) rfl hfoot goodP_chdP hD hPd hPb hDp (fun cn cm => sbF_pos cn cm _) hSl
+    (hucap_of hucapF)
     (fun H src cn cm hMI => callSpec_base newS insS recC hnew hinsS hKD hK hDW hPW hPA hSl0
-      H src cn cm hMI) hs hbig
+      H src cn cm hMI) hs hbig hcapNeed hthr
 
 /-- **The named C-HD witness** for the D layer and the level step: the explicit program
-`chdProg e (chdPs newS insS recC extra) (coreTop (spineOf (spinePro BL2.fpAlloc dPro)))` is exact and runs
-within a constant times `Tdisp F n m`. -/
-theorem chdProg_of_step (e : ℕ) (he : 32 ≤ e) (newS insS recC : Stmt) (extra : List Stmt)
+`chdProgOf thr e (chdPs newS insS recC extra) (coreTop (spineOf (spinePro BL2.fpAlloc dPro)))` is
+exact and runs within a constant times `Tdisp F n m`. -/
+theorem chdProg_of_step (e : ℕ) (he : 160 ≤ e) (newS insS recC : Stmt) (extra : List Stmt)
     {DLf : ∀ (H : Graph) (src : Fin H.n) (cn cm : ℕ), RamSpine.DLayer H src Tz}
     (hnew : ∀ H src cn cm, (DLf H src cn cm).new = newS)
     (hinsS : ∀ H src cn cm, (DLf H src cn cm).ins = insS)
@@ -169,16 +175,21 @@ theorem chdProg_of_step (e : ℕ) (he : 32 ≤ e) (newS insS recC : Stmt) (extra
         (chdP cn cm).DCb (BM.chdM (CostSkeleton.tF cn cm)) (BM.chdTau (CostSkeleton.tF cn cm))
         (CostSkeleton.LF cn cm) (chdBodyP newS insS recC) K (Slf cn cm) (SbF cn cm) (l + 1))
     (hbig : 12 + ((K : ℝ) + (13000 + 34 * ((100 : ℕ) + (Kd : ℝ))) + 0) * (kmaster 1 1 1000 + 1) +
-      |(0 : ℝ)| + |(Kpol : ℝ)| ≤ (4 : ℝ) ^ (e + 1 - Dp)) :
+      |(0 : ℝ)| + |(Kpol : ℝ)| ≤ (4 : ℝ) ^ (e + 1 - Dp))
+    (F capNeed : ℕ → ℕ) (thr : Stmt) (hFl : ∀ n, F n ≤ CostSkeleton.lgN n)
+    (hcap8 : ∀ n, F n ^ 8 ≤ Nat.log 2 n ^ 7)
+    (hcapNeed : ∀ n m : ℕ, 16 ≤ n → capNeed n < (n + m + 2) ^ (e + 1))
+    (hthr : Dispatch.ThrSpec thr F capNeed) :
     let core := coreTop (spineOf (spinePro BL2.fpAlloc dPro))
     let Kc : ℝ := ((K : ℝ) + (13000 + 34 * ((100 : ℕ) + (Kd : ℝ))) + 0) * (kmaster 1 1 1000 + 1) + 250
-    (chdProg e (chdPs newS insS recC extra) core).Exact ∧ ∀ (G : Graph) (s : Fin G.n),
-      (chdProg e (chdPs newS insS recC extra) core).RunsWithin G s
-        ((bodyC Kc + 65536 * 9 + 100) * GateCTarget.Tdisp GateCCalc.F G.n G.m) :=
-  chdProg_of_levels e he (chdPs newS insS recC extra) (chdBodyP newS insS recC)
-    rfl hfoot goodP_chdP hD hPd hPb hDp (fun cn cm => sbF_pos cn cm _) hSl (hucap_of hucapF)
+    (chdProgOf thr e (chdPs newS insS recC extra) core).Exact ∧ ∀ (G : Graph) (s : Fin G.n),
+      (chdProgOf thr e (chdPs newS insS recC extra) core).RunsWithin G s
+        ((bodyC Kc + 65536 * 9 + 100) * GateCTarget.Tdisp F G.n G.m) :=
+  chdProg_of_levels_of F capNeed thr hFl hcap8 e he (chdPs newS insS recC extra)
+    (chdBodyP newS insS recC) rfl hfoot goodP_chdP hD hPd hPb hDp (fun cn cm => sbF_pos cn cm _) hSl
+    (hucap_of hucapF)
     (fun H src cn cm hMI => callSpec_base newS insS recC hnew hinsS hKD hK hDW hPW hPA hSl0
-      H src cn cm hMI) hs hbig
+      H src cn cm hMI) hs hbig hcapNeed hthr
 
 end Frontier.CHD.L6
 

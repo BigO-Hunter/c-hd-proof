@@ -24,9 +24,22 @@ theorem masterSpec_of_good {P : ℕ → ℕ → CostPar} {ch ce cb : ℕ} (hP : 
     MasterSpec P (kmaster ch ce cb) :=
   fun H src cn cm hM => masterSpec_of_goodP hP H src cn cm hM hM.mpos
 
-/-- **The C-HD target from the RAM spine alone**: for any admissible cost parameters `P`
-(`GoodP`), `SpineSpec e ps spine P Ks Kb` with a word exponent `e ≥ 32` large enough for the
-constants gives `CHDTarget F`.  `SpineSpec` is the ONLY remaining hypothesis. -/
+/-- **The C-HD target from the RAM spine alone, threshold-parametric**: for any admissible cost
+parameters `P` (`GoodP`), `SpineSpec e ps spine P Ks Kb Kpol` with a word exponent `e ≥ 160` large
+enough for the constants and a threshold program `thr` computing `F` gives `CHDTarget F`. -/
+theorem chdTarget_of_spine_good_of (F capNeed : ℕ → ℕ) (thr : Stmt)
+    (hFl : ∀ n, F n ≤ CostSkeleton.lgN n) (hcap8 : ∀ n, F n ^ 8 ≤ Nat.log 2 n ^ 7)
+    (e : ℕ) (he : 160 ≤ e) (ps : List Stmt) (spine : Stmt)
+    {P : ℕ → ℕ → CostPar} {ch ce cb : ℕ} (hP : GoodP P ch ce cb) (Ks Kb Kpol : ℝ) (Dp : ℕ)
+    (hDp : 2 ≤ Dp) (hKs : 0 ≤ Ks)
+    (hbig : 12 + Ks * (kmaster ch ce cb + 1) + |Kb| + |Kpol| ≤ (4 : ℝ) ^ (e + 1 - Dp))
+    (hcapNeed : ∀ n m : ℕ, 16 ≤ n → capNeed n < (n + m + 2) ^ (e + 1))
+    (hthr : Dispatch.ThrSpec thr F capNeed)
+    (hsp : SpineSpec e ps spine P Ks Kb Kpol (kmaster ch ce cb) Dp) :
+    GateCTarget.CHDTarget F :=
+  chdTarget_of_spine_of F capNeed thr hFl hcap8 e he ps spine P Ks Kb Kpol (kmaster ch ce cb) Dp
+    hDp hKs (kmaster_nonneg ch ce cb) hbig hcapNeed hthr hsp (masterSpec_of_good hP)
+
 theorem chdTarget_of_spine_good (e : ℕ) (he : 32 ≤ e) (ps : List Stmt) (spine : Stmt)
     {P : ℕ → ℕ → CostPar} {ch ce cb : ℕ} (hP : GoodP P ch ce cb) (Ks Kb Kpol : ℝ) (Dp : ℕ)
     (hDp : 2 ≤ Dp) (hKs : 0 ≤ Ks)
@@ -40,4 +53,5 @@ theorem chdTarget_of_spine_good (e : ℕ) (he : 32 ≤ e) (ps : List Stmt) (spin
 end Frontier.CHD.L6
 
 #print axioms Frontier.CHD.L6.masterSpec_of_good
+#print axioms Frontier.CHD.L6.chdTarget_of_spine_good_of
 #print axioms Frontier.CHD.L6.chdTarget_of_spine_good

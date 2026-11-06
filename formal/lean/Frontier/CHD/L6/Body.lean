@@ -166,33 +166,49 @@ theorem CoreOut.of_eq {H : Graph} {src : Fin H.n} {t t' : State ℝ≥0} (h : Co
 /-- Constant of the body bound. -/
 def bodyC (Kc : ℝ) : ℝ := 2 * Kc + 1500
 
-/-- The dispatch-branch density transfers to the core parameters `(min(n, m+1), m)`. -/
-theorem dens_cn (n m : ℕ) (hpre : m ≤ n * GateCCalc.F n) (hn : 1 ≤ n) :
-    CostSkeleton.dd (min n (m + 1)) m ≤ GateCCalc.F (min n (m + 1)) + 1 := by
+/-- The dispatch-branch density transfers to the core parameters `(min(n, m+1), m)`, for any
+density threshold `F`. -/
+theorem dens_cn_of (F : ℕ → ℕ) (n m : ℕ) (hpre : m ≤ n * F n) (hn : 1 ≤ n) :
+    CostSkeleton.dd (min n (m + 1)) m ≤ F (min n (m + 1)) + 1 := by
   unfold CostSkeleton.dd
   by_cases h : n ≤ m + 1
   · rw [min_eq_left h]
-    have : m / n ≤ GateCCalc.F n := Nat.div_le_of_le_mul hpre
+    have : m / n ≤ F n := Nat.div_le_of_le_mul hpre
     omega
   · rw [min_eq_right (by omega)]
     have : m / (m + 1) = 0 := Nat.div_eq_of_lt (by omega)
     omega
 
-theorem dens_cn_log (n m : ℕ) (hpre : m ≤ n * GateCCalc.F n) (hn : 1 ≤ n) :
+theorem dens_cn (n m : ℕ) (hpre : m ≤ n * GateCCalc.F n) (hn : 1 ≤ n) :
+    CostSkeleton.dd (min n (m + 1)) m ≤ GateCCalc.F (min n (m + 1)) + 1 :=
+  dens_cn_of _ n m hpre hn
+
+theorem dens_cn_log_of (F : ℕ → ℕ) (hF : ∀ n, F n ≤ CostSkeleton.lgN n) (n m : ℕ)
+    (hpre : m ≤ n * F n) (hn : 1 ≤ n) :
     CostSkeleton.dd (min n (m + 1)) m ≤ CostSkeleton.lgN (min n (m + 1)) + 1 := by
-  have h := dens_cn n m hpre hn
-  have := CostSkeleton.F_le_lgN (min n (m + 1))
+  have h := dens_cn_of F n m hpre hn
+  have := hF (min n (m + 1))
   omega
 
+theorem dens_cn_log (n m : ℕ) (hpre : m ≤ n * GateCCalc.F n) (hn : 1 ≤ n) :
+    CostSkeleton.dd (min n (m + 1)) m ≤ CostSkeleton.lgN (min n (m + 1)) + 1 :=
+  dens_cn_log_of _ CostSkeleton.F_le_lgN n m hpre hn
+
 /-- The cap strength at the core parameters `(min n (m+1), m)`, from the window. -/
+theorem tphys_cn_of (F : ℕ → ℕ) (n m : ℕ) (hpre : m ≤ n * F n) (hn : 1 ≤ n)
+    (hcap8 : F (min n (m + 1)) ^ 8 ≤ Nat.log 2 (min n (m + 1)) ^ 7) :
+    CostSkeleton.lgN (min n (m + 1)) ≤ 256 * CostSkeleton.tF (min n (m + 1)) m ^ 12 :=
+  CostSkeleton.lgN_le_tF_pow12 F _ m (dens_cn_of F n m hpre hn) hcap8
+
 theorem tphys_cn (n m : ℕ) (hpre : m ≤ n * GateCCalc.F n) (hn : 1 ≤ n) :
     CostSkeleton.lgN (min n (m + 1)) ≤ 256 * CostSkeleton.tF (min n (m + 1)) m ^ 12 :=
-  CostSkeleton.lgN_le_tF_pow12 GateCCalc.F _ m (dens_cn n m hpre hn) (CostSkeleton.F_pow_eight_le _)
+  tphys_cn_of _ n m hpre hn (CostSkeleton.F_pow_eight_le _)
 
-theorem body_spec (e : ℕ) (he : 3 ≤ e) (ps : List Stmt) (core : Stmt) (Kc : ℝ) (hKc : 0 ≤ Kc)
-    (hcore : CoreSpec e ps core Kc) :
+theorem body_spec_of (F : ℕ → ℕ) (e : ℕ) (he : 3 ≤ e) (ps : List Stmt) (core : Stmt) (Kc : ℝ)
+    (hKc : 0 ≤ Kc) (hFl : ∀ n, F n ≤ CostSkeleton.lgN n)
+    (hcap8 : ∀ n, F n ^ 8 ≤ Nat.log 2 n ^ 7) (hcore : CoreSpec e ps core Kc) :
     Dispatch.BodySpec e ps (chdBody core)
-      (fun G => G.m ≤ G.n * GateCCalc.F G.n ∧ 16 ≤ Nat.log 2 G.n)
+      (fun G => G.m ≤ G.n * F G.n ∧ 16 ≤ Nat.log 2 G.n)
       (fun n m => bodyC Kc * GateCCalc.Tchd n m) := by
   intro G s st hInit hpre
   have hI := initFacts_of_initLike he hInit
@@ -292,8 +308,8 @@ theorem body_spec (e : ℕ) (he : 3 ≤ e) (ps : List Stmt) (core : Stmt) (Kc : 
       cap := by
         rw [hcapt]
         exact Nat.pow_le_pow_left (by have := min_le_left G.n (G.m + 1); omega) _
-      dens := dens_cn_log G.n G.m hpre.1 hn1
-      tphys := tphys_cn G.n G.m hpre.1 hn1 }
+      dens := dens_cn_log_of F hFl G.n G.m hpre.1 hn1
+      tphys := tphys_cn_of F G.n G.m hpre.1 hn1 (hcap8 _) }
     refine runs_seq ((hcore H (R.rep s) _ _ (t.charge 1) hIn).mono ?_)
     rintro r2 ⟨hout, ⟨hk2a, hk2l⟩, ⟨hr2a, hr2l⟩, hn2, -, -, hcap2, hc2⟩
     have hnt : (t.charge 1).w "n" = G.n := by
@@ -380,6 +396,30 @@ theorem body_spec (e : ℕ) (he : 3 ≤ e) (ps : List Stmt) (core : Stmt) (Kc : 
 
 /-! ## The reduction of `CHDTarget F` to `CoreSpec` -/
 
+/-- The `3/4` instance of `body_spec_of`. -/
+theorem body_spec (e : ℕ) (he : 3 ≤ e) (ps : List Stmt) (core : Stmt) (Kc : ℝ) (hKc : 0 ≤ Kc)
+    (hcore : CoreSpec e ps core Kc) :
+    Dispatch.BodySpec e ps (chdBody core)
+      (fun G => G.m ≤ G.n * GateCCalc.F G.n ∧ 16 ≤ Nat.log 2 G.n)
+      (fun n m => bodyC Kc * GateCCalc.Tchd n m) :=
+  body_spec_of GateCCalc.F e he ps core Kc hKc CostSkeleton.F_le_lgN
+    CostSkeleton.F_pow_eight_le hcore
+
+/-! ## The reduction of `CHDTarget F` to `CoreSpec` -/
+
+/-- **Gate-C reduction, threshold-parametric**: a C-HD core RAM program satisfying `CoreSpec` yields
+`CHDTarget F` for any density threshold program computing `F` from `a = log₂ n` (`ThrSpec`), given
+the threshold's two arithmetic facts (`F ≤ lgN`, `F⁸ ≤ (log₂ n)⁷`) and its capacity demand. -/
+theorem chdTarget_of_core_of (F capNeed : ℕ → ℕ) (thr : Stmt)
+    (hFl : ∀ n, F n ≤ CostSkeleton.lgN n) (hcap8 : ∀ n, F n ^ 8 ≤ Nat.log 2 n ^ 7)
+    (e : ℕ) (he : 160 ≤ e) (ps : List Stmt) (core : Stmt) (Kc : ℝ) (hKc : 0 ≤ Kc)
+    (hcapNeed : ∀ n m : ℕ, 16 ≤ n → capNeed n < (n + m + 2) ^ (e + 1))
+    (hthr : Dispatch.ThrSpec thr F capNeed)
+    (hcore : CoreSpec e ps core Kc) : GateCTarget.CHDTarget F :=
+  Dispatch.chdTarget_of_bodyOf e (by omega) ps (chdBody core) thr F capNeed (bodyC Kc)
+    (by unfold bodyC; linarith) hcapNeed hthr
+    (body_spec_of F e (by omega) ps core Kc hKc hFl hcap8 hcore)
+
 /-- **Gate-C reduction (NON-GATE until `CoreSpec` is proved for a concrete core):** a C-HD core RAM
 program satisfying `CoreSpec` yields `CHDTarget F`. -/
 theorem chdTarget_of_core (e : ℕ) (he : 3 ≤ e) (ps : List Stmt) (core : Stmt) (Kc : ℝ) (hKc : 0 ≤ Kc)
@@ -390,4 +430,5 @@ theorem chdTarget_of_core (e : ℕ) (he : 3 ≤ e) (ps : List Stmt) (core : Stmt
 end Frontier.CHD.L6
 
 #print axioms Frontier.CHD.L6.body_spec
+#print axioms Frontier.CHD.L6.chdTarget_of_core_of
 #print axioms Frontier.CHD.L6.chdTarget_of_core

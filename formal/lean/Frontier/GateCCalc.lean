@@ -296,4 +296,44 @@ lemma F_dominates : ∀ᶠ n : ℕ in atTop, s n ≤ F n := by
     _ ≤ (Nat.log 2 n : ℝ) ^ ((3 : ℝ) / 4) :=
         Real.rpow_le_rpow (le_of_lt (L_pos n)) (log_le_natLog hn) (by norm_num)
 
+/-- `r ≤ a^{7/8}` lifts to the three-nested-sqrt integer computation `F87` (the `7/8` analogue of
+`le_sqrt_sqrt_of_real`): three applications of `Nat.le_sqrt`, then `r⁸ ≤ a⁷` by `ring`. -/
+lemma le_sqrt_sqrt_sqrt_of_real {r a : ℕ} (h : (r : ℝ) ≤ (a : ℝ) ^ ((7 : ℝ) / 8)) :
+    r ≤ Nat.sqrt (Nat.sqrt (Nat.sqrt (a ^ 7))) := by
+  have hr0 : (0 : ℝ) ≤ r := Nat.cast_nonneg r
+  have ha0 : (0 : ℝ) ≤ a := Nat.cast_nonneg a
+  have h8 : (r : ℝ) ^ 8 ≤ (a : ℝ) ^ 7 := by
+    have h1 := pow_le_pow_left₀ hr0 h 8
+    have h2 : ((a : ℝ) ^ ((7 : ℝ) / 8)) ^ 8 = (a : ℝ) ^ 7 := by
+      rw [← Real.rpow_natCast ((a : ℝ) ^ ((7 : ℝ) / 8)) 8, ← Real.rpow_mul ha0]
+      norm_num
+    linarith [h1, h2]
+  have h8' : r ^ 8 ≤ a ^ 7 := by exact_mod_cast h8
+  apply Nat.le_sqrt.mpr
+  apply Nat.le_sqrt.mpr
+  apply Nat.le_sqrt.mpr
+  calc r * r * (r * r) * (r * r * (r * r)) = r ^ 8 := by ring
+    _ ≤ a ^ 7 := h8'
+
+/-- The `7/8` integer threshold eventually dominates the profile multiplier (the `7/8` analogue of
+`F_dominates`; `7/8 > 3/4` makes it easier — the same eventual bound on `log` suffices). -/
+lemma F87_dominates : ∀ᶠ n : ℕ in atTop, s n ≤ F87 n := by
+  filter_upwards [eventually_ge_atTop 32] with n hn
+  unfold s F87
+  apply le_sqrt_sqrt_sqrt_of_real
+  have hlog5 : (1 : ℝ) ≤ ((Nat.log 2 n : ℕ) : ℝ) := by
+    have h5 : 5 ≤ Nat.log 2 n := by
+      have h32 : Nat.log 2 32 = 5 := by
+        rw [show (32 : ℕ) = 2 ^ 5 by norm_num, Nat.log_pow (by norm_num)]
+      calc 5 = Nat.log 2 32 := h32.symm
+        _ ≤ Nat.log 2 n := Nat.log_mono_right hn
+    have h5R : (5 : ℝ) ≤ ((Nat.log 2 n : ℕ) : ℝ) := by exact_mod_cast h5
+    linarith
+  calc (⌊L n ^ ((3 : ℝ) / 4)⌋₊ : ℝ) ≤ L n ^ ((3 : ℝ) / 4) :=
+        Nat.floor_le (Real.rpow_nonneg (le_of_lt (L_pos n)) _)
+    _ ≤ (Nat.log 2 n : ℝ) ^ ((3 : ℝ) / 4) :=
+        Real.rpow_le_rpow (le_of_lt (L_pos n)) (log_le_natLog hn) (by norm_num)
+    _ ≤ (Nat.log 2 n : ℝ) ^ ((7 : ℝ) / 8) :=
+        Real.rpow_le_rpow_of_exponent_le hlog5 (by norm_num)
+
 end Frontier.GateCCalc

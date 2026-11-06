@@ -478,6 +478,23 @@ theorem coreSpec_of_spine (e : ℕ) (he : 32 ≤ e) (ps : List Stmt) (spine : St
         mul_le_mul_of_nonneg_left (by nlinarith) hKs
       nlinarith
 
+/-- **The C-HD target from the two remaining specifications, threshold-parametric**: the RAM spine
+(`SpineSpec`) and the Layer-A master cost theorem (`MasterSpec`), for a word exponent `e ≥ 160` large
+enough for the constants (`hbig`) and a `7/8`-style threshold program (`ThrSpec`). -/
+theorem chdTarget_of_spine_of (F capNeed : ℕ → ℕ) (thr : Stmt)
+    (hFl : ∀ n, F n ≤ CostSkeleton.lgN n) (hcap8 : ∀ n, F n ^ 8 ≤ Nat.log 2 n ^ 7)
+    (e : ℕ) (he : 160 ≤ e) (ps : List Stmt) (spine : Stmt)
+    (P : ℕ → ℕ → CostPar) (Ks Kb Kpol Km : ℝ) (Dp : ℕ) (hDp : 2 ≤ Dp) (hKs : 0 ≤ Ks) (hKm : 0 ≤ Km)
+    (hbig : 12 + Ks * (Km + 1) + |Kb| + |Kpol| ≤ (4 : ℝ) ^ (e + 1 - Dp))
+    (hcapNeed : ∀ n m : ℕ, 16 ≤ n → capNeed n < (n + m + 2) ^ (e + 1))
+    (hthr : Dispatch.ThrSpec thr F capNeed)
+    (hsp : SpineSpec e ps spine P Ks Kb Kpol Km Dp) (hma : MasterSpec P Km) :
+    GateCTarget.CHDTarget F :=
+  chdTarget_of_core_of F capNeed thr hFl hcap8 e he ps (coreTop spine) (Ks * (Km + 1) + 250)
+    (by have : 0 ≤ Ks * (Km + 1) := mul_nonneg hKs (by linarith); linarith)
+    hcapNeed hthr
+    (coreSpec_of_spine e (by omega) ps spine P Ks Kb Kpol Km Dp hDp hKs hKm hbig hsp hma)
+
 /-- **The C-HD target from the two remaining specifications**: the RAM spine (`SpineSpec`) and
 the Layer-A master cost theorem (`MasterSpec`), for a word exponent `e ≥ 32` large enough for the
 constants (`hbig`). -/
@@ -493,4 +510,5 @@ theorem chdTarget_of_spine (e : ℕ) (he : 32 ≤ e) (ps : List Stmt) (spine : S
 end Frontier.CHD.L6
 
 #print axioms Frontier.CHD.L6.coreSpec_of_spine
+#print axioms Frontier.CHD.L6.chdTarget_of_spine_of
 #print axioms Frontier.CHD.L6.chdTarget_of_spine
