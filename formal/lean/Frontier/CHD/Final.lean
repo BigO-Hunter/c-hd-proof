@@ -209,10 +209,14 @@ theorem chd_CHDTarget87 : GateCTarget.CHDTarget GateCCalc.F87 :=
 profile inside the window where Dijkstra is the best known bound. -/
 theorem chd_gateC : Frontier.GateC := GateCTarget.chdTarget_F_imp_gateC chd_CHDTarget
 
+/-- **Gate C over the `7/8` window**: the same conclusion from the wider-cap target. -/
+theorem chd_gateC87 : Frontier.GateC := GateCTarget.chdTarget_F87_imp_gateC chd_CHDTarget87
+
 end Frontier.CHD.Final
 
 #print axioms Frontier.CHD.Final.chd_exact_within
 #print axioms Frontier.CHD.Final.chd_CHDTarget
 #print axioms Frontier.CHD.Final.chd_exact_within87
 #print axioms Frontier.CHD.Final.chd_CHDTarget87
+#print axioms Frontier.CHD.Final.chd_gateC87
 #print axioms Frontier.CHD.Final.chd_gateC
