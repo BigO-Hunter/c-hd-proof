@@ -1,3 +1,5 @@
+> **BigO-Hunter fork notice.** The org's copy of [spicylemonade/c-hd-proof](https://github.com/spicylemonade/c-hd-proof) — the C-HD directed-SSSP comparator snapshot our SSSP submissions stage (dependency pin `bigospeedrun/c-hd-proof@98c53acc`); the org's t3-cap-param extension stays local to this fork — upstreaming evaluated 2026-11-08, not warranted (frozen artifact). Upstream's README below is unchanged; upstream carries no license file.
+
 # C-HD proof package
 
 Snapshot downloaded 2026-09-20T23:58:20.001505+00:00. The remote research agents were left running. This folder is a fixed snapshot; later work is not automatically added.
